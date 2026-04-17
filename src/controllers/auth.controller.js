@@ -7,6 +7,20 @@ exports.register = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
+    // Check if user already exists
+    const existing = await pool.query(
+      "SELECT * FROM users WHERE email=$1",
+      [email]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
+
     const hashed = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
@@ -14,7 +28,10 @@ exports.register = async (req, res, next) => {
       [email, hashed]
     );
 
-    res.json(result.rows[0]);
+    res.status(201).json({
+      message: "User registered successfully",
+      user: result.rows[0],
+    });
   } catch (err) {
     next(err);
   }
@@ -32,19 +49,30 @@ exports.login = async (req, res, next) => {
 
     const user = result.rows[0];
 
-    if (!user) return res.status(400).json({ message: "User not found" });
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
-    if (!isMatch)
+    if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
 
     const token = jwt.sign(
       { userId: user.id },
-      process.env.JWT_SECRET
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" } // better practice
     );
 
-    res.json({ token });
+    res.json({
+      message: "Login successful",
+      token,
+    });
   } catch (err) {
     next(err);
   }

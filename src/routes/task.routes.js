@@ -6,7 +6,7 @@ router.use(auth);
 
 router.post("/", ctrl.createTask);
 router.get("/", ctrl.getTasks);
-router.get("/:id", ctrl.getTask);
+router.get("/:id", ctrl.getTask);   // ✅ THIS MUST MATCH
 router.patch("/:id", ctrl.updateTask);
 router.delete("/:id", ctrl.deleteTask);
 

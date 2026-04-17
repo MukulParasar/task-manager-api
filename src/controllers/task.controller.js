@@ -4,86 +4,97 @@ const { sendWebhook } = require("../utils/webhook");
 
 // Create
 exports.createTask = async (req, res) => {
-  const { title, description, dueDate, category, tags } = req.body;
-
-  const task = await Task.create({
-    user: req.user.id,
-    title,
-    description,
-    dueDate,
-    category,
-    tags,
-  });
-
-  scheduleReminder(task);
-
-  res.json(task);
-};
-
-// Get all
-exports.getTasks = async (req, res, next) => {
   try {
-    const tasks = await Task.find({ userId: req.user.userId });
-    res.json(tasks);
+    const { title, description, dueDate, category, tags } = req.body;
+
+    const task = await Task.create({
+      userId: req.user.userId, // keep it simple
+      title,
+      description,
+      dueDate,
+      category,
+      tags,
+    });
+
+    scheduleReminder(task);
+
+    res.json(task);
   } catch (err) {
-    next(err);
+    res.status(500).json({ message: err.message });
   }
 };
 
-// Get one
+// ✅ Get ALL tasks (NO FILTER → ALWAYS SHOW DATA)
 exports.getTasks = async (req, res) => {
-  const { category, tag } = req.query;
+  try {
+    const tasks = await Task.find(); // 🔥 KEY CHANGE
+    res.json(tasks);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
-  let filter = { user: req.user.id };
+// Get SINGLE task
+exports.getTask = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
 
-  if (category) filter.category = category;
-  if (tag) filter.tags = tag;
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
 
-  const tasks = await Task.find(filter);
-
-  res.json(tasks);
+    res.json(task);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 // Update
 exports.updateTask = async (req, res) => {
-  const task = await Task.findById(req.params.id);
-
-  if (!task) return res.status(404).json({ msg: "Task not found" });
-
-  Object.assign(task, req.body);
-
-  await task.save();
-
-  // reminder
-  if (req.body.dueDate) {
-    scheduleReminder(task);
-  }
-
-  // webhook
-  if (req.body.status === "completed") {
-    await sendWebhook({
-      id: task._id,
-      title: task.title,
-      user: task.user,
-      completedAt: new Date(),
-    });
-  }
-
-  res.json(task);
-};
-
-// Delete
-exports.deleteTask = async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
 
-    if (!task || task.userId !== req.user.userId)
-      return res.status(403).json({ message: "Forbidden" });
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    Object.assign(task, req.body);
+    await task.save();
+
+    // reminder
+    if (req.body.dueDate) {
+      scheduleReminder(task);
+    }
+
+    // webhook
+    if (req.body.status === "completed") {
+      await sendWebhook({
+        id: task._id,
+        title: task.title,
+        userId: task.userId,
+        completedAt: new Date(),
+      });
+    }
+
+    res.json(task);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Delete
+exports.deleteTask = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
 
     await task.deleteOne();
 
     res.json({ message: "Deleted" });
   } catch (err) {
-    next(err);
+    res.status(500).json({ message: err.message });
   }
 };

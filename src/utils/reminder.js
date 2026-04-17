@@ -1,10 +1,27 @@
 const scheduleReminder = (task) => {
-  if (!task.dueDate) return;
+  if (!task.dueDate) {
+    console.log("❌ No dueDate provided, skipping reminder");
+    return;
+  }
 
-  const reminderTime = new Date(task.dueDate).getTime() - 60 * 60 * 1000;
-  const delay = reminderTime - Date.now();
+  const now = Date.now();
+  const dueTime = new Date(task.dueDate).getTime();
 
-  if (delay <= 0) return;
+  // 🔥 For testing: reminder 10 seconds before dueDate
+  const reminderTime = dueTime - 10 * 1000;
+
+  const delay = reminderTime - now;
+
+  console.log("📌 Scheduling reminder...");
+  console.log("Current Time:", new Date(now));
+  console.log("Due Time:", new Date(dueTime));
+  console.log("Reminder Time:", new Date(reminderTime));
+  console.log("Delay (ms):", delay);
+
+  if (delay <= 0) {
+    console.log("⚠️ Reminder time already passed, skipping...");
+    return;
+  }
 
   setTimeout(() => {
     console.log(`🔔 Reminder: Task "${task.title}" is due soon!`);
